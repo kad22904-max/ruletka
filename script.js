@@ -72,6 +72,7 @@ function handleTap(e) {
     updateUI();
     saveState();
     
+    // РИППЛ ЭФФЕКТ
     const rect = giftImage.getBoundingClientRect();
     const x = (e.clientX || e.touches?.[0]?.clientX || rect.left + rect.width/2) - rect.left;
     const y = (e.clientY || e.touches?.[0]?.clientY || rect.top + rect.height/2) - rect.top;
@@ -89,11 +90,13 @@ function handleTap(e) {
     giftImage.parentElement.appendChild(rippleClone);
     setTimeout(() => rippleClone.remove(), 600);
     
+    // АНИМАЦИЯ НАЖАТИЯ
     giftImage.style.transform = 'scale(0.92)';
     setTimeout(() => {
         giftImage.style.transform = 'scale(1)';
     }, 80);
     
+    // ПРОВЕРКА ПОБЕДЫ
     if (state.taps >= TAPS_TO_WIN && !state.won) {
         state.won = true;
         saveState();

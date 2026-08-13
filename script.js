@@ -1,115 +1,100 @@
+console.log('✅ script.js загружен!');
+
 const TAPS_TO_WIN = 100;
-const PERCENT_MIN = 10;
-const PERCENT_MAX = 90;
 const STORAGE_KEY = 'tapData';
 
-let state = {
-    taps: 0,
-    percent: 70,
-    won: false
-};
+let taps = 0;
+let won = false;
 
 const percentDisplay = document.getElementById('percentDisplay');
 const tapCounter = document.getElementById('tapCounter');
 const giftImage = document.getElementById('giftImage');
 const winOverlay = document.getElementById('winOverlay');
-const ripple = document.getElementById('ripple');
 
-function loadState() {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            state.taps = parsed.taps || 0;
-            state.won = parsed.won || false;
-            state.percent = getDailyPercent();
-            if (state.won) {
-                winOverlay.classList.add('active');
-            }
-        } else {
-            state.percent = getDailyPercent();
-        }
-    } catch {
-        state.percent = getDailyPercent();
-    }
-    updateUI();
-}
-
+// ===== ПРОЦЕНТ НА ДЕНЬ =====
 function getDailyPercent() {
     const today = new Date().toDateString();
     let hash = 0;
     for (let i = 0; i < today.length; i++) {
         hash = (hash * 31 + today.charCodeAt(i)) & 0xFFFFFFFF;
     }
-    const normalized = (hash % (PERCENT_MAX - PERCENT_MIN + 1)) + PERCENT_MIN;
-    return Math.min(PERCENT_MAX, Math.max(PERCENT_MIN, normalized));
+    return 10 + (hash % 81); // от 10 до 90
 }
 
+// ===== ЗАГРУЗКА СОСТОЯНИЯ =====
+function loadState() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            taps = parsed.taps || 0;
+            won = parsed.won || false;
+            if (won) {
+                winOverlay.classList.add('active');
+            }
+        }
+    } catch (e) {
+        console.warn('Ошибка загрузки:', e);
+    }
+    updateUI();
+}
+
+// ===== СОХРАНЕНИЕ =====
 function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        taps: state.taps,
-        won: state.won
-    }));
-}
-
-function updateUI() {
-    percentDisplay.textContent = state.percent + '%';
-    tapCounter.textContent = `Тапов: ${state.taps} / ${TAPS_TO_WIN}`;
-    
-    if (state.percent < 30) {
-        percentDisplay.style.color = '#ff6b6b';
-    } else if (state.percent < 60) {
-        percentDisplay.style.color = '#ffd93d';
-    } else {
-        percentDisplay.style.color = '#6bcb77';
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ taps, won }));
+    } catch (e) {
+        console.warn('Ошибка сохранения:', e);
     }
 }
 
-function handleTap(e) {
-    if (state.won) return;
+// ===== ОБНОВЛЕНИЕ ЭКРАНА =====
+function updateUI() {
+    const percent = getDailyPercent();
+    percentDisplay.textContent = percent + '%';
+    tapCounter.textContent = `Тапов: ${taps} / ${TAPS_TO_WIN}`;
+    console.log('Обновлено UI, тапов:', taps);
+}
+
+// ===== ОБРАБОТЧИК ТАПА =====
+function handleTap(event) {
+    console.log('🔨 Тап! Текущие тапы:', taps);
     
-    state.taps++;
+    if (won) {
+        console.log('🚫 Уже победа, тап заблокирован');
+        return;
+    }
+
+    taps++;
     updateUI();
     saveState();
-    
-    // РИППЛ ЭФФЕКТ
-    const rect = giftImage.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0]?.clientX || rect.left + rect.width/2) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY || rect.top + rect.height/2) - rect.top;
-    const rippleClone = ripple.cloneNode(true);
-    rippleClone.style.left = (x - 30) + 'px';
-    rippleClone.style.top = (y - 30) + 'px';
-    rippleClone.style.width = '60px';
-    rippleClone.style.height = '60px';
-    rippleClone.style.position = 'absolute';
-    rippleClone.style.borderRadius = '50%';
-    rippleClone.style.background = 'rgba(255, 215, 0, 0.25)';
-    rippleClone.style.transform = 'scale(0)';
-    rippleClone.style.animation = 'rippleAnim 0.5s ease-out forwards';
-    rippleClone.style.pointerEvents = 'none';
-    giftImage.parentElement.appendChild(rippleClone);
-    setTimeout(() => rippleClone.remove(), 600);
-    
-    // АНИМАЦИЯ НАЖАТИЯ
+
+    // Анимация нажатия
     giftImage.style.transform = 'scale(0.92)';
     setTimeout(() => {
         giftImage.style.transform = 'scale(1)';
     }, 80);
-    
-    // ПРОВЕРКА ПОБЕДЫ
-    if (state.taps >= TAPS_TO_WIN && !state.won) {
-        state.won = true;
+
+    // Проверка победы
+    if (taps >= TAPS_TO_WIN && !won) {
+        won = true;
         saveState();
         winOverlay.classList.add('active');
+        console.log('🏆 ПОБЕДА!');
     }
 }
 
+// ===== ИНИЦИАЛИЗАЦИЯ =====
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM загружен');
     loadState();
-    
+
+    // Вешаем обработчики
     giftImage.addEventListener('click', handleTap);
     giftImage.addEventListener('touchstart', (e) => {
         e.preventDefault();
         handleTap(e);
     });
+
+    console.log('👂 Обработчики навешаны');
 });
